@@ -1,0 +1,28 @@
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: hospedajes-db
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  flyway:
+    image: flyway/flyway:10
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    command: -url=jdbc:postgresql://db:5432/${POSTGRES_DB} -user=${POSTGRES_USER} -password=${POSTGRES_PASSWORD} -locations=filesystem:/flyway/sql migrate
+    volumes:
+      - ./db/migrations:/flyway/sql:ro
+
+volumes:
+  pgdata:
